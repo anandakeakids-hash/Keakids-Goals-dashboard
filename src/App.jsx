@@ -25,7 +25,6 @@ const INITIAL_TASKS = [
   { id: 'T-022', goalId: 'GOAL-07', phase: 'Printing & Logistics', task: 'Allah dan press', assignedTo: 'Ananda', deadline: '2026-11-15', priority: 'High', status: 'Completed', progress: 100 }
 ];
 
-// Initial logs matching exact previous expenses: 500 + 30500 + 1750 = 32,750 BDT
 const INITIAL_LOGS = [
   { taskId: 'T-001', day: 1, date: '2026-11-05', notes: 'BDJobs subscription initial fee & conveyance', hours: 4, progress: 25, transport: 200, food: 150, misc: 150 },
   { taskId: 'T-009', day: 1, date: '2026-11-10', notes: 'Payment gateway merchant registration & advance', hours: 6, progress: 65, transport: 300, food: 200, misc: 30000 },
@@ -39,31 +38,33 @@ const INITIAL_FUNDS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [goals, setGoals] = useState(() => JSON.parse(localStorage.getItem('kea_goals_v3')) || INITIAL_GOALS);
-  const [tasks, setTasks] = useState(() => JSON.parse(localStorage.getItem('kea_tasks_v3')) || INITIAL_TASKS);
-  const [dailyLogs, setDailyLogs] = useState(() => JSON.parse(localStorage.getItem('kea_logs_v3')) || INITIAL_LOGS);
-  const [funds, setFunds] = useState(() => JSON.parse(localStorage.getItem('kea_funds_v3')) || INITIAL_FUNDS);
+  const [goals, setGoals] = useState(() => JSON.parse(localStorage.getItem('kea_goals_v4')) || INITIAL_GOALS);
+  const [tasks, setTasks] = useState(() => JSON.parse(localStorage.getItem('kea_tasks_v4')) || INITIAL_TASKS);
+  const [dailyLogs, setDailyLogs] = useState(() => JSON.parse(localStorage.getItem('kea_logs_v4')) || INITIAL_LOGS);
+  const [funds, setFunds] = useState(() => JSON.parse(localStorage.getItem('kea_funds_v4')) || INITIAL_FUNDS);
 
-  // Filters for Task Tracker
+  // Filters
   const [filterGoal, setFilterGoal] = useState('All');
   const [filterPriority, setFilterPriority] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
 
-  // Selected Goal & Task for 7-Day Operations
+  // 7-Day Operations Selection
   const [opGoalId, setOpGoalId] = useState('GOAL-07');
   const [opTaskId, setOpTaskId] = useState('T-022');
 
-  // Modals
+  // Modals & Editing State
   const [modalType, setModalType] = useState(null); // 'goal' | 'task' | 'fund'
+  const [editingFundId, setEditingFundId] = useState(null);
+
   const [newGoal, setNewGoal] = useState({ title: '', expectedResult: '', finalDeadline: '2026-12-15' });
   const [newTask, setNewTask] = useState({ goalId: 'GOAL-01', phase: 'General', task: '', assignedTo: '', deadline: '2026-11-25', priority: 'High' });
-  const [newFund, setNewFund] = useState({ source: '', category: 'Student Collection', amount: '', date: new Date().toISOString().split('T')[0], notes: '' });
+  const [fundForm, setFundForm] = useState({ source: '', category: 'Student Collection', amount: '', date: new Date().toISOString().split('T')[0], notes: '' });
 
   useEffect(() => {
-    localStorage.setItem('kea_goals_v3', JSON.stringify(goals));
-    localStorage.setItem('kea_tasks_v3', JSON.stringify(tasks));
-    localStorage.setItem('kea_logs_v3', JSON.stringify(dailyLogs));
-    localStorage.setItem('kea_funds_v3', JSON.stringify(funds));
+    localStorage.setItem('kea_goals_v4', JSON.stringify(goals));
+    localStorage.setItem('kea_tasks_v4', JSON.stringify(tasks));
+    localStorage.setItem('kea_logs_v4', JSON.stringify(dailyLogs));
+    localStorage.setItem('kea_funds_v4', JSON.stringify(funds));
   }, [goals, tasks, dailyLogs, funds]);
 
   // Calculations
@@ -115,11 +116,33 @@ export default function App() {
     setModalType(null);
   };
 
-  const handleAddFund = (e) => {
+  const openAddFundModal = () => {
+    setEditingFundId(null);
+    setFundForm({ source: '', category: 'Student Collection', amount: '', date: new Date().toISOString().split('T')[0], notes: '' });
+    setModalType('fund');
+  };
+
+  const openEditFundModal = (fund) => {
+    setEditingFundId(fund.id);
+    setFundForm({ source: fund.source, category: fund.category, amount: fund.amount, date: fund.date, notes: fund.notes || '' });
+    setModalType('fund');
+  };
+
+  const handleSaveFund = (e) => {
     e.preventDefault();
-    setFunds([{ id: `F-${Date.now()}`, ...newFund, amount: Number(newFund.amount) }, ...funds]);
-    setNewFund({ source: '', category: 'Student Collection', amount: '', date: new Date().toISOString().split('T')[0], notes: '' });
+    if (editingFundId) {
+      setFunds(prev => prev.map(f => f.id === editingFundId ? { ...f, ...fundForm, amount: Number(fundForm.amount) } : f));
+    } else {
+      setFunds([{ id: `F-${Date.now()}`, ...fundForm, amount: Number(fundForm.amount) }, ...funds]);
+    }
+    setEditingFundId(null);
     setModalType(null);
+  };
+
+  const handleDeleteFund = (id) => {
+    if (window.confirm('আপনি কি এই টাকার হিসাবটি ডিলিট করতে চান?')) {
+      setFunds(prev => prev.filter(f => f.id !== id));
+    }
   };
 
   const handleUpdateDayLog = (dayNum, field, value) => {
@@ -206,9 +229,9 @@ export default function App() {
           ))}
         </div>
 
-        {/* Right Side Action Buttons: Add Money, New Goal, New Task */}
+        {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button onClick={() => setModalType('fund')} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '7px 13px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>
+          <button onClick={openAddFundModal} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '7px 13px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>
             + Add Money / Sale
           </button>
           <button onClick={() => setModalType('goal')} style={{ backgroundColor: '#0f172a', color: 'white', border: 'none', padding: '7px 13px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>
@@ -227,7 +250,7 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <div>
             {/* Top KPI Summary Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '24px' }}>
               <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>ACTIVE PRIMARY GOALS</p>
                 <h3 style={{ margin: '6px 0 4px 0', fontSize: '24px', fontWeight: '900', color: '#4f46e5' }}>{goals.length} Goals</h3>
@@ -238,20 +261,20 @@ export default function App() {
                 <h3 style={{ margin: '6px 0 4px 0', fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>{tasks.length}</h3>
                 <p style={{ margin: 0, fontSize: '11px', color: '#059669', fontWeight: '600' }}>{completedCount} Done / {inProgressCount} In Progress</p>
               </div>
-              <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1.5px solid #a7f3d0' }}>
-                <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TOTAL SYSTEM EXPENSES</p>
+              <div onClick={() => setActiveTab('operations')} title="Click to log daily expenses" style={{ cursor: 'pointer', backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1.5px solid #a7f3d0' }}>
+                <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TOTAL SYSTEM EXPENSES ✎</p>
                 <h3 style={{ margin: '6px 0 4px 0', fontSize: '24px', fontWeight: '900', color: '#059669' }}>৳{totalSystemExpenses.toLocaleString()}</h3>
-                <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Aggregated from daily logs</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Click to edit daily logs</p>
               </div>
-              <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1.5px solid #bfdbfe' }}>
-                <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TOTAL FUNDS RECEIVED</p>
+              <div onClick={() => setActiveTab('funds')} title="Click to edit or manage funds" style={{ cursor: 'pointer', backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1.5px solid #bfdbfe' }}>
+                <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TOTAL FUNDS RECEIVED ✎</p>
                 <h3 style={{ margin: '6px 0 4px 0', fontSize: '22px', fontWeight: '900', color: '#2563eb' }}>৳{totalFundsReceived.toLocaleString()}</h3>
                 <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Student: ৳{totalStudentMoney.toLocaleString()} | Mgmt: ৳{totalManagementMoney.toLocaleString()}</p>
               </div>
               <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>NET CASH BALANCE</p>
                 <h3 style={{ margin: '6px 0 4px 0', fontSize: '22px', fontWeight: '900', color: netBalance >= 0 ? '#0f172a' : '#e11d48' }}>৳{netBalance.toLocaleString()}</h3>
-                <p style={{ margin: 0, fontSize: '11px', color: '#e11d48', fontWeight: '600' }}>{overdueCount} Overdue Tasks</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Formula: Funds - Expenses</p>
               </div>
             </div>
 
@@ -279,7 +302,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Green Expense Pill Box */}
                     <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                       <span style={{ fontSize: '12px', fontWeight: '700', color: '#065f46' }}>💵 Total Goal Expenses Logged:</span>
                       <span style={{ fontSize: '14px', fontWeight: '900', color: '#059669' }}>৳{gExp.toLocaleString()} BDT</span>
@@ -321,10 +343,9 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 3: TASK TRACKER & WORKFLOW WITH FILTERS */}
+        {/* TAB 3: TASK TRACKER & WORKFLOW */}
         {activeTab === 'tasks' && (
           <div>
-            {/* Filter Bar */}
             <div style={{ backgroundColor: 'white', padding: '14px 18px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>🌪️ Filters:</span>
               <select value={filterGoal} onChange={e => setFilterGoal(e.target.value)} style={{ padding: '7px 12px', borderRadius: '8px', border: '1.5px solid #eab308', fontSize: '12px', fontWeight: '600', minWidth: '240px' }}>
@@ -344,7 +365,6 @@ export default function App() {
               </select>
             </div>
 
-            {/* Workflow Grid Table */}
             <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                 <thead style={{ backgroundColor: '#0f172a', color: 'white', fontSize: '11px' }}>
@@ -415,7 +435,6 @@ export default function App() {
         {/* TAB 4: 7-DAY DAILY OPERATIONS & CARDS */}
         {activeTab === 'operations' && (
           <div>
-            {/* Selector Header */}
             <div style={{ backgroundColor: 'white', padding: '18px 22px', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div>
                 <span style={{ fontSize: '10px', fontWeight: '800', color: '#4f46e5', letterSpacing: '0.5px' }}>7-DAY WORKFLOW CARDS & EXPENSE ENGINE</span>
@@ -446,7 +465,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 3 Summary Stat Boxes */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '20px' }}>
               <div style={{ backgroundColor: 'white', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TOTAL HOURS LOGGED</span>
@@ -462,7 +480,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 7 Day Cards Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '16px' }}>
               {[1, 2, 3, 4, 5, 6, 7].map(dayNum => {
                 const log = dailyLogs.find(l => l.taskId === opTaskId && l.day === dayNum) || { notes: '', hours: 0, progress: 0, transport: 0, food: 0, misc: 0, date: '' };
@@ -521,17 +538,17 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 5: STUDENT & MANAGEMENT FUNDS */}
+        {/* TAB 5: STUDENT & MANAGEMENT FUNDS WITH EDIT & DELETE */}
         {activeTab === 'funds' && (
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>Student Collections & Management Funds Ledger</h2>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                  Total Received: <strong style={{ color: '#2563eb' }}>৳{totalFundsReceived.toLocaleString()}</strong> | Total Spent: <strong style={{ color: '#e11d48' }}>৳{totalSystemExpenses.toLocaleString()}</strong> | Remaining Cash: <strong style={{ color: '#059669' }}>৳{netBalance.toLocaleString()}</strong>
+                  Total Received: <strong style={{ color: '#2563eb' }}>৳{totalFundsReceived.toLocaleString()}</strong> | Total Spent: <strong style={{ color: '#e11d48' }}>৳{totalSystemExpenses.toLocaleString()}</strong> | Net Cash Balance: <strong style={{ color: '#059669' }}>৳{netBalance.toLocaleString()}</strong>
                 </p>
               </div>
-              <button onClick={() => setModalType('fund')} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '9px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>
+              <button onClick={openAddFundModal} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '9px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>
                 + Add Money / Student Sale
               </button>
             </div>
@@ -544,22 +561,35 @@ export default function App() {
                   <th style={{ padding: '12px 14px' }}>CATEGORY</th>
                   <th style={{ padding: '12px 14px' }}>NOTES</th>
                   <th style={{ padding: '12px 14px', textAlign: 'right' }}>AMOUNT (BDT)</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {funds.map(f => (
-                  <tr key={f.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 14px' }}>{f.date}</td>
-                    <td style={{ padding: '12px 14px', fontWeight: '700' }}>{f.source}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{ backgroundColor: f.category === 'Student Collection' ? '#dcfce7' : '#dbeafe', color: f.category === 'Student Collection' ? '#166534' : '#1e40af', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                        {f.category}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px', color: '#64748b' }}>{f.notes}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>+ ৳{Number(f.amount).toLocaleString()}</td>
-                  </tr>
-                ))}
+                {funds.length === 0 ? (
+                  <tr><td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No fund entries found. Click "+ Add Money / Student Sale" to log daily receipts.</td></tr>
+                ) : (
+                  funds.map(f => (
+                    <tr key={f.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px' }}>{f.date}</td>
+                      <td style={{ padding: '12px 14px', fontWeight: '700' }}>{f.source}</td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <span style={{ backgroundColor: f.category === 'Student Collection' ? '#dcfce7' : '#dbeafe', color: f.category === 'Student Collection' ? '#166534' : '#1e40af', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                          {f.category}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 14px', color: '#64748b' }}>{f.notes}</td>
+                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>+ ৳{Number(f.amount).toLocaleString()}</td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <button onClick={() => openEditFundModal(f)} style={{ backgroundColor: '#eef2ff', color: '#4f46e5', border: 'none', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', marginRight: '6px' }}>
+                          Edit
+                        </button>
+                        <button onClick={() => handleDeleteFund(f.id)} style={{ backgroundColor: '#ffe4e6', color: '#e11d48', border: 'none', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -568,11 +598,11 @@ export default function App() {
         {/* TAB 6: SOP */}
         {activeTab === 'sop' && (
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            <h2 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '800' }}>Operating Rules & Standard Operating Procedures (SOP)</h2>
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '800' }}>Operating Rules & Formula Guide (SOP)</h2>
             <ul style={{ fontSize: '13px', color: '#334155', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li><strong>Daily Expense Logging:</strong> All transport, food bills, printing, and program costs must be entered inside the respective Task's <strong>7-Day Daily Operations Card</strong>.</li>
-              <li><strong>Funds & Student Sales:</strong> Any money received from Student Package Sales or Management Budget allocations must be logged via <strong>+ Add Money / Sale</strong>.</li>
-              <li><strong>Automated Cash Balance:</strong> Net Cash Balance is automatically calculated as <code>(Student Collections + Management Funds) - Total System Expenses</code>.</li>
+              <li><strong>Total Funds Received:</strong> Automatically sums all entries under <em>Student Collection</em> and <em>Management Fund</em>. You can edit or delete any entry in the <strong>Student & Management Funds</strong> tab.</li>
+              <li><strong>Total System Expenses:</strong> Automatically sums all daily expenses entered in the <strong>7-Day Daily Operations & Cards</strong> tab.</li>
+              <li><strong>Net Cash Balance:</strong> Calculated as <code>Total Funds Received - Total System Expenses</code>.</li>
             </ul>
           </div>
         )}
@@ -613,18 +643,19 @@ export default function App() {
             )}
 
             {modalType === 'fund' && (
-              <form onSubmit={handleAddFund}>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px' }}>+ Add Money / Student Sale</h3>
-                <select value={newFund.category} onChange={e => setNewFund({ ...newFund, category: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}>
+              <form onSubmit={handleSaveFund}>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px' }}>{editingFundId ? '✎ Edit Money / Sale Entry' : '+ Add Money / Student Sale'}</h3>
+                <input type="date" required value={fundForm.date} onChange={e => setFundForm({ ...fundForm, date: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                <select value={fundForm.category} onChange={e => setFundForm({ ...fundForm, category: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}>
                   <option value="Student Collection">Student Collection (From Students)</option>
                   <option value="Management Fund">Management Fund (From Management)</option>
                 </select>
-                <input required placeholder="Source (e.g. 10 Students Model Test / Office Fund)" value={newFund.source} onChange={e => setNewFund({ ...newFund, source: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input type="number" min="1" required placeholder="Amount (BDT)" value={newFund.amount} onChange={e => setNewFund({ ...newFund, amount: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input placeholder="Notes (optional)" value={newFund.notes} onChange={e => setNewFund({ ...newFund, notes: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '14px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                <input required placeholder="Source (e.g. 10 Students Model Test / Office Fund)" value={fundForm.source} onChange={e => setFundForm({ ...fundForm, source: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                <input type="number" min="0" required placeholder="Amount (BDT)" value={fundForm.amount} onChange={e => setFundForm({ ...fundForm, amount: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                <input placeholder="Notes (optional)" value={fundForm.notes} onChange={e => setFundForm({ ...fundForm, notes: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '14px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                   <button type="button" onClick={() => setModalType(null)} style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#e2e8f0', cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#059669', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Save Money</button>
+                  <button type="submit" style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#059669', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>{editingFundId ? 'Update Entry' : 'Save Money'}</button>
                 </div>
               </form>
             )}
