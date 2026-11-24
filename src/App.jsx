@@ -7,33 +7,51 @@ const INITIAL_GOALS = [
   { id: 'GOAL-04', title: 'Payment Gateway', expectedResult: 'Payment checking', finalDeadline: '2026-11-19', status: 'In Progress' },
   { id: 'GOAL-05', title: 'Educational Content Quality Evaluation', expectedResult: 'Review Physics chapter 7 creative questions and model tests', finalDeadline: '2026-11-25', status: 'In Progress' },
   { id: 'GOAL-06', title: 'Task Management Workflow Automation', expectedResult: 'Deploy web-based dashboard replacing manual Excel trackers', finalDeadline: '2026-11-30', status: 'In Progress' },
-  { id: 'GOAL-07', title: 'Different Program cost', expectedResult: 'Track daily operational expenses, printing & program costs', finalDeadline: '2026-12-10', status: 'In Progress' }
+  { id: 'GOAL-07', title: 'Different Program cost', expectedResult: 'Track daily operational expenses, printing & program costs', finalDeadline: '2026-12-10', status: 'In Progress' },
+  { id: 'GOAL-08', title: 'SOE ', expectedResult: 'Improve user sign-up and conversion rate from organic search by 15–20%', finalDeadline: '2027-01-01', status: 'In Progress' },
+  { id: 'GOAL-09', title: 'Add in Chat-GPT', expectedResult: 'Targeted AI Referral Traffic,Higher Conversion Rate,Brand Visibility & Recall', finalDeadline: '2027-01-01', status: 'In Progress' },
+  { id: 'GOAL-010', title: 'Endorsements', expectedResult: "Students', Parents', Educators'", finalDeadline: '2026-12-31', status: 'In Progress' },
+  { id: 'GOAL-011', title: 'School Visit', expectedResult: 'Free Model Test 10 Account ', finalDeadline: '2026-12-31', status: 'In Progress' },
+  { id: 'GOAL-012', title: 'Presentation Cantonment School', expectedResult: 'Asst. Mowsumee Chowdhury', finalDeadline: '2026-12-25', status: 'In Progress' }
 ];
 
 const INITIAL_TASKS = [
   { id: 'T-001', goalId: 'GOAL-01', phase: 'BDJobs Job Posting', task: 'Activate BDJobs subscription', assignedTo: 'Mithun', deadline: '2026-11-05', priority: 'High', status: 'In Progress', progress: 25 },
   { id: 'T-002', goalId: 'GOAL-01', phase: 'BDJobs Job Posting', task: 'Collect official documents from Mithun Sir', assignedTo: 'Mithun', deadline: '2026-11-06', priority: 'High', status: 'Completed', progress: 100 },
-  { id: 'T-003', goalId: 'GOAL-01', phase: 'BDJobs Job Posting', task: 'Obtain budget confirmation', assignedTo: 'Finance', deadline: '2026-11-06', priority: 'High', status: 'Not Started', progress: 0 },
+  { id: 'T-003', goalId: 'GOAL-01', phase: 'BDJobs Job Posting', task: 'Obtain budget confirmation', assignedTo: 'Finance', deadline: '2026-11-06', priority: 'High', status: 'In Progress', progress: 0 },
   { id: 'T-004', goalId: 'GOAL-01', phase: 'BDJobs Job Posting', task: 'Publish BDJobs job post', assignedTo: 'HR Exec', deadline: '2026-11-07', priority: 'High', status: 'In Progress', progress: 25 },
-  { id: 'T-005', goalId: 'GOAL-01', phase: 'Newspaper Advertisement', task: 'Collect quotations from 5 newspapers', assignedTo: 'Media P', deadline: '2026-11-10', priority: 'Medium', status: 'Not Started', progress: 0 },
-  { id: 'T-006', goalId: 'GOAL-01', phase: 'Newspaper Advertisement', task: 'Calculate advertisement budget and obtain approval', assignedTo: 'HR Lead', deadline: '2026-11-11', priority: 'High', status: 'Not Started', progress: 0 },
+  { id: 'T-005', goalId: 'GOAL-01', phase: 'Newspaper Advertisement', task: 'Collect quotations from 5 newspapers', assignedTo: 'Media P', deadline: '2026-11-10', priority: 'Medium', status: 'Completed', progress: 100 },
+  { id: 'T-006', goalId: 'GOAL-01', phase: 'Newspaper Advertisement', task: 'Calculate advertisement budget and obtain approval', assignedTo: 'HR Lead', deadline: '2026-11-11', priority: 'High', status: 'Completed', progress: 100 },
   { id: 'T-007', goalId: 'GOAL-02', phase: 'Operation Audit', task: 'Go through all operational things', assignedTo: 'Mithun', deadline: '2026-11-12', priority: 'High', status: 'In Progress', progress: 13 },
   { id: 'T-008', goalId: 'GOAL-03', phase: 'Recruitment Ads', task: 'Monitor candidate applications for 4 vacancies', assignedTo: 'HR Exec', deadline: '2026-12-03', priority: 'High', status: 'In Progress', progress: 25 },
   { id: 'T-009', goalId: 'GOAL-04', phase: 'Payment Setup', task: 'Payment gateway integration & SSL checking', assignedTo: 'Tech Lead', deadline: '2026-11-19', priority: 'High', status: 'In Progress', progress: 65 },
-  { id: 'T-010', goalId: 'GOAL-05', phase: 'Content QA', task: 'Evaluate Physics chapter 7 creative questions', assignedTo: 'Content Team', deadline: '2026-11-25', priority: 'Medium', status: 'Not Started', progress: 0 },
+  { id: 'T-010', goalId: 'GOAL-05', phase: 'Content QA', task: 'Evaluate Physics chapter 7 creative questions', assignedTo: 'Content Team', deadline: '2026-11-25', priority: 'Medium', status: 'In Progress', progress: 65 },
   { id: 'T-011', goalId: 'GOAL-06', phase: 'System Setup', task: 'Deploy web-based dashboard on Vercel', assignedTo: 'Admin', deadline: '2026-11-30', priority: 'High', status: 'Completed', progress: 100 },
-  { id: 'T-022', goalId: 'GOAL-07', phase: 'Printing & Logistics', task: 'Allah dan press', assignedTo: 'Ananda', deadline: '2026-11-15', priority: 'High', status: 'Completed', progress: 100 }
+  { id: 'T-022', goalId: 'GOAL-07', phase: 'Printing & Logistics', task: 'Allah dan press', assignedTo: 'Ananda', deadline: '2026-11-15', priority: 'High', status: 'Completed', progress: 100 },
+  { id: 'T-025', goalId: 'GOAL-04', phase: 'Bank Transfer details', task: 'Cash Inflows', assignedTo: 'Mithun Sir and Ananda', deadline: '2026-11-16', priority: 'High', status: 'Not Started', progress: 0 },
+  { id: 'T-026', goalId: 'GOAL-05', phase: 'Science Subjects Previous Question', task: 'tansen Sir - Text book Collection', assignedTo: 'Ananda', deadline: '2026-11-16', priority: 'High', status: 'In Progress', progress: 50 },
+  { id: 'T-027', goalId: 'GOAL-07', phase: 'Sms Provider', task: 'sms purpose', assignedTo: 'Mithun Sir', deadline: '2026-11-15', priority: 'High', status: 'Completed', progress: 100 },
+  { id: 'T-028', goalId: 'GOAL-011', phase: 'School List in CTG', task: '50 school List', assignedTo: 'Ananda', deadline: '2026-11-18', priority: 'High', status: 'Not Started', progress: 0 },
+  { id: 'T-029', goalId: 'GOAL-09', phase: 'General', task: 'Advertisement on Chat-GPT', assignedTo: 'Mithun Sir', deadline: '2026-11-25', priority: 'High', status: 'Not Started', progress: 0 },
+  { id: 'T-030', goalId: 'GOAL-08', phase: 'General', task: 'Optimization', assignedTo: 'Mithun Sir', deadline: '2026-11-25', priority: 'High', status: 'Not Started', progress: 0 },
+  { id: 'T-031', goalId: 'GOAL-012', phase: 'General', task: 'Biology ', assignedTo: 'Mithun Sir And Ananda', deadline: '2026-11-22', priority: 'High', status: 'Not Started', progress: 0 }
 ];
 
 const INITIAL_LOGS = [
   { taskId: 'T-001', day: 1, date: '2026-11-05', notes: 'BDJobs subscription initial fee & conveyance', hours: 4, progress: 25, transport: 200, food: 150, misc: 150 },
   { taskId: 'T-009', day: 1, date: '2026-11-10', notes: 'Payment gateway merchant registration & advance', hours: 6, progress: 65, transport: 300, food: 200, misc: 30000 },
-  { taskId: 'T-022', day: 1, date: '2026-11-11', notes: '1000 pcs card-1200+ Official Seal-400\\-', hours: 8, progress: 100, transport: 100, food: 50, misc: 1600 }
+  { taskId: 'T-022', day: 1, date: '2026-11-11', notes: '1000 pcs card-1200+ Official Seal-400\\-', hours: 8, progress: 100, transport: 100, food: 50, misc: 1600 },
+  { taskId: 'T-004', day: 1, date: '2026-11-15', notes: 'Sales & Digital Marketing Officer- Milon Vai', hours: 16, progress: 25, transport: 0, food: 0, misc: 4095 },
+  { taskId: 'T-006', day: 1, date: '2026-11-15', notes: 'Dainik Azadi- 2"/2" advertisement for 11.15.2026 back page Color', hours: 8, progress: 100, transport: 100, food: 0, misc: 13600 },
+  { taskId: 'T-008', day: 1, date: '2026-11-15', notes: '11/15/2026- 16 candidates ', hours: 2, progress: 0, transport: 0, food: 0, misc: 0 },
+  { taskId: 'T-008', day: 2, date: '2026-11-15', notes: '11/16/2026-', hours: 0, progress: 0, transport: 0, food: 0, misc: 0 },
+  { taskId: 'T-027', day: 1, date: '2026-11-15', notes: 'sms provider person money - 11/15/2026', hours: 0.5, progress: 100, transport: 0, food: 0, misc: 500 },
+  { taskId: 'T-010', day: 1, date: '2026-11-15', notes: 'Ananda', hours: 0.5, progress: 65, transport: 0, food: 0, misc: 0 },
+  { taskId: 'T-026', day: 1, date: '2026-11-15', notes: 'physics model question scan purpose', hours: 8, progress: 50, transport: 0, food: 0, misc: 400 }
 ];
 
 const INITIAL_FUNDS = [
-  { id: 'F-01', date: '2026-11-05', source: 'Management Operational Fund', category: 'Management Fund', amount: 35000, notes: 'Initial operational budget from Management' },
-  { id: 'F-02', date: '2026-11-12', source: 'Student Model Test & Story Package', category: 'Student Collection', amount: 12500, notes: '25 students enrolled @ 500 BDT' }
+  { id: 'F-01', date: '2026-11-15', source: 'Management Operational Fund', category: 'Management Fund', amount: 45000, notes: 'Initial operational budget from Management' }
 ];
 
 export default function App() {
