@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { exportDayWiseSchoolVisitReport } from './utils/exportExcel';
 
 const INITIAL_GOALS = [
   { id: 'GOAL-01', title: 'Human Resource Recruitment', expectedResult: 'Hire and onboard the required employee', finalDeadline: '2026-12-01', status: 'In Progress' },
@@ -60,6 +61,7 @@ export default function App() {
   const [tasks, setTasks] = useState(() => JSON.parse(localStorage.getItem('kea_tasks_v4')) || INITIAL_TASKS);
   const [dailyLogs, setDailyLogs] = useState(() => JSON.parse(localStorage.getItem('kea_logs_v4')) || INITIAL_LOGS);
   const [funds, setFunds] = useState(() => JSON.parse(localStorage.getItem('kea_funds_v4')) || INITIAL_FUNDS);
+  const [remarksByTask, setRemarksByTask] = useState(() => JSON.parse(localStorage.getItem('kea_remarks_v1')) || {});
 
   // Filters
   const [filterGoal, setFilterGoal] = useState('All');
@@ -83,7 +85,8 @@ export default function App() {
     localStorage.setItem('kea_tasks_v4', JSON.stringify(tasks));
     localStorage.setItem('kea_logs_v4', JSON.stringify(dailyLogs));
     localStorage.setItem('kea_funds_v4', JSON.stringify(funds));
-  }, [goals, tasks, dailyLogs, funds]);
+    localStorage.setItem('kea_remarks_v1', JSON.stringify(remarksByTask));
+  }, [goals, tasks, dailyLogs, funds, remarksByTask]);
 
   // Calculations
   const getTaskExpense = (taskId) => dailyLogs.filter(l => l.taskId === taskId).reduce((s, l) => s + Number(l.transport || 0) + Number(l.food || 0) + Number(l.misc || 0), 0);
@@ -116,6 +119,44 @@ export default function App() {
       return true;
     });
   }, [tasks, filterGoal, filterPriority, filterStatus]);
+
+  // Day-wise columns (Day 1 to Day 7) + Total Cost + Remarks
+  const handleExportFilteredTasks = () => {
+    const rowsForExport = filteredTasks.map(t => {
+      const taskLogs = dailyLogs.filter(l => l.taskId === t.id);
+      const dayColumns = {};
+
+      for (let d = 1; d <= 7; d++) {
+        const dayLog = taskLogs.find(l => Number(l.day) === d);
+        const dayCost = dayLog
+          ? Number(dayLog.transport || 0) + Number(dayLog.food || 0) + Number(dayLog.misc || 0)
+          : 0;
+        const workText = dayLog?.notes
+          ? (dayLog.date ? `${dayLog.notes} (${dayLog.date})` : dayLog.notes)
+          : '';
+
+        dayColumns[`Day ${d} Work`] = workText;
+        dayColumns[`Day ${d} Cost (৳)`] = dayCost;
+      }
+
+      return {
+        'Goal ID': t.goalId,
+        'Task ID': t.id,
+        'Phase': t.phase,
+        'School / Task Description': t.task,
+        'Owner': t.assignedTo,
+        'Deadline': t.deadline,
+        'Status': t.status,
+        'Progress (%)': t.progress ?? 0,
+        'Total Hours': getTaskHours(t.id),
+        'Total Expenses (৳)': getTaskExpense(t.id),
+        ...dayColumns,
+        'Remarks': remarksByTask[t.id] || ''
+      };
+    });
+
+    exportDayWiseSchoolVisitReport(rowsForExport, remarksByTask);
+  };
 
   // Handlers
   const handleAddGoal = (e) => {
@@ -191,7 +232,7 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", backgroundColor: '#f1f5f9', minHeight: '100vh', color: '#0f172a' }}>
-      
+
       {/* Dark Navy Top Header */}
       <header style={{ backgroundColor: '#0f172a', color: 'white', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -287,399 +328,4 @@ export default function App() {
               <div onClick={() => setActiveTab('funds')} title="Click to edit or manage funds" style={{ cursor: 'pointer', backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1.5px solid #bfdbfe' }}>
                 <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TOTAL FUNDS RECEIVED ✎</p>
                 <h3 style={{ margin: '6px 0 4px 0', fontSize: '22px', fontWeight: '900', color: '#2563eb' }}>৳{totalFundsReceived.toLocaleString()}</h3>
-                <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Student: ৳{totalStudentMoney.toLocaleString()} | Mgmt: ৳{totalManagementMoney.toLocaleString()}</p>
-              </div>
-              <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <p style={{ margin: 0, fontSize: '10px', fontWeight: '700', color: '#64748b' }}>NET CASH BALANCE</p>
-                <h3 style={{ margin: '6px 0 4px 0', fontSize: '22px', fontWeight: '900', color: netBalance >= 0 ? '#0f172a' : '#e11d48' }}>৳{netBalance.toLocaleString()}</h3>
-                <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Formula: Funds - Expenses</p>
-              </div>
-            </div>
-
-            {/* ALL PRIMARY GOALS & EXPENSES OVERVIEW */}
-            <h3 style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', marginBottom: '14px', letterSpacing: '0.5px' }}>ALL PRIMARY GOALS & EXPENSES OVERVIEW</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
-              {goals.map(goal => {
-                const gExp = getGoalExpense(goal.id);
-                const gPct = getGoalProgress(goal.id);
-                const gSubCount = tasks.filter(t => t.goalId === goal.id).length;
-                return (
-                  <div key={goal.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ backgroundColor: '#eef2ff', color: '#4f46e5', fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px' }}>{goal.id}</span>
-                          <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '10px' }}>{goal.status}</span>
-                        </div>
-                        <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>{goal.title}</h4>
-                        <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#64748b' }}>Expected Result: <strong style={{ color: '#334155' }}>{goal.expectedResult}</strong></p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '20px', fontWeight: '900', color: '#4f46e5' }}>{gPct}%</span>
-                        <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>Completion Rate</p>
-                      </div>
-                    </div>
-
-                    <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#065f46' }}>💵 Total Goal Expenses Logged:</span>
-                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#059669' }}>৳{gExp.toLocaleString()} BDT</span>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginBottom: '6px' }}>
-                      <span>{gSubCount} Sub-tasks assigned</span>
-                      <span>Deadline: {goal.finalDeadline}</span>
-                    </div>
-                    <div style={{ width: '100%', backgroundColor: '#e2e8f0', height: '6px', borderRadius: '4px' }}>
-                      <div style={{ width: `${gPct}%`, backgroundColor: '#4f46e5', height: '6px', borderRadius: '4px' }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: GOAL REGISTER */}
-        {activeTab === 'goals' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '16px' }}>
-            {goals.map(goal => (
-              <div key={goal.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ backgroundColor: '#eef2ff', color: '#4f46e5', fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '6px' }}>{goal.id}</span>
-                  <span style={{ fontSize: '12px', fontWeight: '800', color: '#059669' }}>Expense: ৳{getGoalExpense(goal.id).toLocaleString()}</span>
-                </div>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 'bold' }}>{goal.title}</h3>
-                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#475569' }}>Expected Result: <strong>{goal.expectedResult}</strong></p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>Deadline: {goal.finalDeadline}</span>
-                  <button onClick={() => { setFilterGoal(goal.id); setActiveTab('tasks'); }} style={{ backgroundColor: '#eef2ff', color: '#4f46e5', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    View Tasks →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* TAB 3: TASK TRACKER & WORKFLOW */}
-        {activeTab === 'tasks' && (
-          <div>
-            <div style={{ backgroundColor: 'white', padding: '14px 18px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>🌪️ Filters:</span>
-              <select value={filterGoal} onChange={e => setFilterGoal(e.target.value)} style={{ padding: '7px 12px', borderRadius: '8px', border: '1.5px solid #eab308', fontSize: '12px', fontWeight: '600', minWidth: '240px' }}>
-                <option value="All">All Primary Goals ({goals.length})</option>
-                {goals.map(g => <option key={g.id} value={g.id}>{g.id}: {g.title}</option>)}
-              </select>
-              <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px' }}>
-                <option value="All">All Priorities</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-              </select>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px' }}>
-                <option value="All">All Statuses</option>
-                <option value="Not Started">Not Started</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                <thead style={{ backgroundColor: '#0f172a', color: 'white', fontSize: '11px' }}>
-                  <tr>
-                    <th style={{ padding: '12px 14px' }}>GOAL ID</th>
-                    <th style={{ padding: '12px 14px' }}>TASK ID</th>
-                    <th style={{ padding: '12px 14px' }}>PHASE</th>
-                    <th style={{ padding: '12px 14px' }}>TASK DESCRIPTION</th>
-                    <th style={{ padding: '12px 14px' }}>OWNER</th>
-                    <th style={{ padding: '12px 14px' }}>DEADLINE</th>
-                    <th style={{ padding: '12px 14px' }}>TOTAL EXPENSES</th>
-                    <th style={{ padding: '12px 14px' }}>TOTAL HOURS</th>
-                    <th style={{ padding: '12px 14px' }}>STATUS</th>
-                    <th style={{ padding: '12px 14px' }}>PROGRESS</th>
-                    <th style={{ padding: '12px 14px' }}>DAILY CARD</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTasks.map(t => {
-                    const tExp = getTaskExpense(t.id);
-                    const tHrs = getTaskHours(t.id);
-                    const isOverdue = t.status !== 'Completed' && t.deadline < '2026-11-16';
-                    return (
-                      <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 14px' }}><span style={{ backgroundColor: '#eef2ff', color: '#4f46e5', padding: '2px 7px', borderRadius: '6px', fontWeight: '700', fontSize: '11px' }}>{t.goalId}</span></td>
-                        <td style={{ padding: '12px 14px', fontWeight: '800', color: '#4f46e5' }}>{t.id}</td>
-                        <td style={{ padding: '12px 14px' }}><span style={{ backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', color: '#475569' }}>{t.phase}</span></td>
-                        <td style={{ padding: '12px 14px', fontWeight: '700', color: '#0f172a' }}>{t.task}</td>
-                        <td style={{ padding: '12px 14px', color: '#475569' }}>{t.assignedTo}</td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ fontWeight: '600' }}>{t.deadline}</div>
-                          {t.status === 'Completed' ? (
-                            <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Completed</span>
-                          ) : isOverdue ? (
-                            <span style={{ backgroundColor: '#ffe4e6', color: '#e11d48', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Overdue</span>
-                          ) : (
-                            <span style={{ backgroundColor: '#fef3c7', color: '#d97706', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Active</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px 14px', fontWeight: '800', color: '#059669' }}>৳{tExp.toLocaleString()}</td>
-                        <td style={{ padding: '12px 14px', color: '#475569' }}>{tHrs} hrs</td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <select
-                            value={t.status}
-                            onChange={e => setTasks(prev => prev.map(item => item.id === t.id ? { ...item, status: e.target.value, progress: e.target.value === 'Completed' ? 100 : item.progress } : item))}
-                            style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', fontWeight: '700', backgroundColor: t.status === 'Completed' ? '#dcfce7' : t.status === 'In Progress' ? '#e0f2fe' : '#f8fafc' }}
-                          >
-                            <option value="Not Started">Not Started</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Completed">Completed</option>
-                          </select>
-                        </td>
-                        <td style={{ padding: '12px 14px', fontWeight: '800', color: '#4f46e5' }}>{t.progress}%</td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <button onClick={() => open7DayForTask(t)} style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', color: '#334155' }}>
-                            7-Day Card
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: 7-DAY DAILY OPERATIONS & CARDS */}
-        {activeTab === 'operations' && (
-          <div>
-            <div style={{ backgroundColor: 'white', padding: '18px 22px', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <span style={{ fontSize: '10px', fontWeight: '800', color: '#4f46e5', letterSpacing: '0.5px' }}>7-DAY WORKFLOW CARDS & EXPENSE ENGINE</span>
-                <h2 style={{ margin: '4px 0', fontSize: '18px', fontWeight: '900' }}>{activeOpTask ? `${activeOpTask.id}: ${activeOpTask.task}` : 'Select a Task'}</h2>
-                <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Goal: <strong>{opGoalId}</strong> | Owner: <strong>{activeOpTask?.assignedTo}</strong></p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#64748b', marginBottom: '4px' }}>SELECT GOAL</label>
-                  <select
-                    value={opGoalId}
-                    onChange={e => {
-                      setOpGoalId(e.target.value);
-                      const first = tasks.find(t => t.goalId === e.target.value);
-                      if (first) setOpTaskId(first.id);
-                    }}
-                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: '600', minWidth: '220px' }}
-                  >
-                    {goals.map(g => <option key={g.id} value={g.id}>{g.id}: {g.title}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#64748b', marginBottom: '4px' }}>SELECT TASK</label>
-                  <select value={opTaskId} onChange={e => setOpTaskId(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: '600', minWidth: '220px' }}>
-                    {opGoalTasks.map(t => <option key={t.id} value={t.id}>{t.id}: {t.task}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-              <div style={{ backgroundColor: 'white', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TOTAL HOURS LOGGED</span>
-                <h3 style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900' }}>{getTaskHours(opTaskId)} Hours</h3>
-              </div>
-              <div style={{ backgroundColor: '#ecfdf5', padding: '16px 20px', borderRadius: '12px', border: '1.5px solid #a7f3d0' }}>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#065f46' }}>TOTAL TASK EXPENSES</span>
-                <h3 style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#059669' }}>৳{getTaskExpense(opTaskId).toLocaleString()} BDT</h3>
-              </div>
-              <div style={{ backgroundColor: 'white', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748b' }}>TASK PROGRESS</span>
-                <h3 style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#4f46e5' }}>{activeOpTask?.progress || 0}%</h3>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '16px' }}>
-              {[1, 2, 3, 4, 5, 6, 7].map(dayNum => {
-                const log = dailyLogs.find(l => l.taskId === opTaskId && l.day === dayNum) || { notes: '', hours: 0, progress: 0, transport: 0, food: 0, misc: 0, date: '' };
-                const dayTotal = Number(log.transport || 0) + Number(log.food || 0) + Number(log.misc || 0);
-                return (
-                  <div key={dayNum} style={{ backgroundColor: 'white', padding: '18px', borderRadius: '14px', border: dayTotal > 0 || log.notes ? '1.5px solid #10b981' : '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#4f46e5' }}>DAY {dayNum} CARD</span>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>{log.date || 'Not Logged'}</span>
-                    </div>
-
-                    <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#64748b', marginBottom: '4px' }}>WORK OUTPUT / NOTES</label>
-                    <textarea
-                      rows="2"
-                      placeholder={`Log Day ${dayNum} output...`}
-                      value={log.notes}
-                      onChange={e => handleUpdateDayLog(dayNum, 'notes', e.target.value)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box' }}
-                    />
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '9px', fontWeight: '700', color: '#64748b', marginBottom: '2px' }}>HOURS WORKED</label>
-                        <input type="number" min="0" value={log.hours} onChange={e => handleUpdateDayLog(dayNum, 'hours', Number(e.target.value))} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 'bold', textAlign: 'center', boxSizing: 'border-box' }} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '9px', fontWeight: '700', color: '#64748b', marginBottom: '2px' }}>PROGRESS %</label>
-                        <input type="number" min="0" max="100" value={log.progress} onChange={e => handleUpdateDayLog(dayNum, 'progress', Number(e.target.value))} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 'bold', textAlign: 'center', color: '#4f46e5', boxSizing: 'border-box' }} />
-                      </div>
-                    </div>
-
-                    <div style={{ backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#059669' }}>DAY {dayNum} EXPENSES (৳)</span>
-                        <span style={{ fontSize: '11px', fontWeight: '800', color: '#0f172a' }}>৳{dayTotal}</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                        <div>
-                          <span style={{ fontSize: '9px', color: '#64748b', display: 'block' }}>Transport</span>
-                          <input type="number" min="0" value={log.transport} onChange={e => handleUpdateDayLog(dayNum, 'transport', Number(e.target.value))} style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '9px', color: '#64748b', display: 'block' }}>Food Bill</span>
-                          <input type="number" min="0" value={log.food} onChange={e => handleUpdateDayLog(dayNum, 'food', Number(e.target.value))} style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '9px', color: '#64748b', display: 'block' }}>Other/Print</span>
-                          <input type="number" min="0" value={log.misc} onChange={e => handleUpdateDayLog(dayNum, 'misc', Number(e.target.value))} style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: STUDENT & MANAGEMENT FUNDS WITH EDIT & DELETE */}
-        {activeTab === 'funds' && (
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>Student Collections & Management Funds Ledger</h2>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                  Total Received: <strong style={{ color: '#2563eb' }}>৳{totalFundsReceived.toLocaleString()}</strong> | Total Spent: <strong style={{ color: '#e11d48' }}>৳{totalSystemExpenses.toLocaleString()}</strong> | Net Cash Balance: <strong style={{ color: '#059669' }}>৳{netBalance.toLocaleString()}</strong>
-                </p>
-              </div>
-              <button onClick={openAddFundModal} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '9px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>
-                + Add Money / Student Sale
-              </button>
-            </div>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-              <thead style={{ backgroundColor: '#0f172a', color: 'white' }}>
-                <tr>
-                  <th style={{ padding: '12px 14px' }}>DATE</th>
-                  <th style={{ padding: '12px 14px' }}>SOURCE / DESCRIPTION</th>
-                  <th style={{ padding: '12px 14px' }}>CATEGORY</th>
-                  <th style={{ padding: '12px 14px' }}>NOTES</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'right' }}>AMOUNT (BDT)</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {funds.length === 0 ? (
-                  <tr><td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No fund entries found. Click "+ Add Money / Student Sale" to log daily receipts.</td></tr>
-                ) : (
-                  funds.map(f => (
-                    <tr key={f.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 14px' }}>{f.date}</td>
-                      <td style={{ padding: '12px 14px', fontWeight: '700' }}>{f.source}</td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <span style={{ backgroundColor: f.category === 'Student Collection' ? '#dcfce7' : '#dbeafe', color: f.category === 'Student Collection' ? '#166534' : '#1e40af', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                          {f.category}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 14px', color: '#64748b' }}>{f.notes}</td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>+ ৳{Number(f.amount).toLocaleString()}</td>
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <button onClick={() => openEditFundModal(f)} style={{ backgroundColor: '#eef2ff', color: '#4f46e5', border: 'none', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', marginRight: '6px' }}>
-                          Edit
-                        </button>
-                        <button onClick={() => handleDeleteFund(f.id)} style={{ backgroundColor: '#ffe4e6', color: '#e11d48', border: 'none', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 6: SOP */}
-        {activeTab === 'sop' && (
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            <h2 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '800' }}>Operating Rules & Formula Guide (SOP)</h2>
-            <ul style={{ fontSize: '13px', color: '#334155', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li><strong>Total Funds Received:</strong> Automatically sums all entries under <em>Student Collection</em> and <em>Management Fund</em>. You can edit or delete any entry in the <strong>Student & Management Funds</strong> tab.</li>
-              <li><strong>Total System Expenses:</strong> Automatically sums all daily expenses entered in the <strong>7-Day Daily Operations & Cards</strong> tab.</li>
-              <li><strong>Net Cash Balance:</strong> Calculated as <code>Total Funds Received - Total System Expenses</code>.</li>
-            </ul>
-          </div>
-        )}
-      </main>
-
-      {/* MODALS */}
-      {modalType && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '14px', width: '420px', maxWidth: '92%' }}>
-            {modalType === 'goal' && (
-              <form onSubmit={handleAddGoal}>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px' }}>+ Create New Primary Goal</h3>
-                <input required placeholder="Goal Title" value={newGoal.title} onChange={e => setNewGoal({ ...newGoal, title: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input required placeholder="Expected Result" value={newGoal.expectedResult} onChange={e => setNewGoal({ ...newGoal, expectedResult: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input type="date" required value={newGoal.finalDeadline} onChange={e => setNewGoal({ ...newGoal, finalDeadline: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '14px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button type="button" onClick={() => setModalType(null)} style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#e2e8f0', cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#0f172a', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Save Goal</button>
-                </div>
-              </form>
-            )}
-
-            {modalType === 'task' && (
-              <form onSubmit={handleAddTask}>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px' }}>+ Create New Sub-Task</h3>
-                <select value={newTask.goalId} onChange={e => setNewTask({ ...newTask, goalId: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}>
-                  {goals.map(g => <option key={g.id} value={g.id}>{g.id}: {g.title}</option>)}
-                </select>
-                <input required placeholder="Phase (e.g. BDJobs / Printing)" value={newTask.phase} onChange={e => setNewTask({ ...newTask, phase: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input required placeholder="Task Description" value={newTask.task} onChange={e => setNewTask({ ...newTask, task: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input required placeholder="Assigned Owner (e.g. Mithun / Ananda)" value={newTask.assignedTo} onChange={e => setNewTask({ ...newTask, assignedTo: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input type="date" required value={newTask.deadline} onChange={e => setNewTask({ ...newTask, deadline: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '14px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button type="button" onClick={() => setModalType(null)} style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#e2e8f0', cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#4f46e5', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Save Task</button>
-                </div>
-              </form>
-            )}
-
-            {modalType === 'fund' && (
-              <form onSubmit={handleSaveFund}>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px' }}>{editingFundId ? '✎ Edit Money / Sale Entry' : '+ Add Money / Student Sale'}</h3>
-                <input type="date" required value={fundForm.date} onChange={e => setFundForm({ ...fundForm, date: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <select value={fundForm.category} onChange={e => setFundForm({ ...fundForm, category: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}>
-                  <option value="Student Collection">Student Collection (From Students)</option>
-                  <option value="Management Fund">Management Fund (From Management)</option>
-                </select>
-                <input required placeholder="Source (e.g. 10 Students Model Test / Office Fund)" value={fundForm.source} onChange={e => setFundForm({ ...fundForm, source: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input type="number" min="0" required placeholder="Amount (BDT)" value={fundForm.amount} onChange={e => setFundForm({ ...fundForm, amount: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input placeholder="Notes (optional)" value={fundForm.notes} onChange={e => setFundForm({ ...fundForm, notes: e.target.value })} style={{ width: '100%', padding: '9px', marginBottom: '14px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button type="button" onClick={() => setModalType(null)} style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#e2e8f0', cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#059669', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>{editingFundId ? 'Update Entry' : 'Save Money'}</button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Student:
